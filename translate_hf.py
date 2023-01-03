@@ -164,7 +164,6 @@ def main(argv):
 
 #if __name__ == '__main__':
 args = get_args()
-print("Here")
 tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name_or_path,cache_dir=args.cache_dir)
 print("Tokenizer Build Successfully")
 model = AutoModelForSeq2SeqLM.from_pretrained(args.model_name_or_path,cache_dir=args.cache_dir)
