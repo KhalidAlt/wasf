@@ -3,6 +3,7 @@ from transformers import AutoModelForSeq2SeqLM, AutoTokenizer,M2M100Config,M2M10
 from datasets import load_dataset, Dataset
 from torch.utils.data import DataLoader
 import pandas as pd
+from tqdm import tqdm 
 
 def get_args():
     Parser = argparse.ArgumentParser(description="Machine Translation Evalution")
