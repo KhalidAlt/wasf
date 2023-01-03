@@ -160,7 +160,7 @@ def main(argv):
 
     if args.push_to_hub == True:
         ds = Dataset.from_pandas(df)
-        ds.push_to_hub('khalidalt/ccg_translated', private=True)
+        ds.push_to_hub('khalidalt/ccg_arabic', private=True)
 
 
 #if __name__ == '__main__':
