@@ -59,7 +59,12 @@ def get_args():
         type=str,
         help = 'target language code.'
     )
-
+    Parser.add_argument(
+        '--batch_size',
+        type=int,
+        default=4,
+        help = 'Use this argument if you want to rename the columns of the dataset.'
+    )
     Parser.add_argument(
         '--rename',
         type=str,
@@ -90,7 +95,12 @@ def get_args():
         type=str,
         help = 'Use this argument if you want for the path where you want to save the result.'
     )
-
+    Parser.add_argument(
+        '--toy_example',
+        type=bool,
+        default=False,
+        help = 'Use this arguments if you want to use only 10 examples.'
+    )
     Parser.add_argument(
         '--push_to_hub',
         type=str,
@@ -125,14 +135,25 @@ def main(argv):
         
         ds = load_dataset(args.dataset,args.subset,split=args.split,cache_dir=args.cache_dir)
 
-    train_dataloader = DataLoader(ds, batch_size=4, shuffle=True)
+    if args.toy_example:
+
+        ## This line to be removed
+        ds = ds.select(range(10))
+    
+    train_dataloader = DataLoader(ds, batch_size=args.batch_size, shuffle=True)
+
+
+
 
     translated = []
     for i in tqdm(train_dataloader):
         inputs=tokenizer(i[args.column_name],return_tensors='pt',truncation=True,padding='longest')
         inputs['input_ids'] = inputs['input_ids'].to(args.device)
         inputs['attention_mask'] = inputs['attention_mask'].to(args.device)
-    
+
+        inputs['input_ids'] = inputs['input_ids'].to(args.device)
+        inputs['attention_mask'] = inputs['attention_mask'].to(args.device)
+
         translated_tokens = model.generate(
         **inputs.to(args.device), forced_bos_token_id=tokenizer.lang_code_to_id['ar'], max_length=30,num_beams=3,
         )
@@ -165,10 +186,18 @@ def main(argv):
 
 #if __name__ == '__main__':
 args = get_args()
+print("Here")
 tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name_or_path,cache_dir=args.cache_dir)
 print("Tokenizer Build Successfully")
 model = AutoModelForSeq2SeqLM.from_pretrained(args.model_name_or_path,cache_dir=args.cache_dir)
 print("Model Build Successfully")
 print(model)
+
+from torch.nn import DataParallel
+
+if args.device == 'cuda':
+    model = DataParallel(model,device_ids=[0,1])
+    model.cuda()
+
 
 main(args)
