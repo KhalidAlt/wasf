@@ -4,6 +4,7 @@ from datasets import load_dataset, Dataset
 from torch.utils.data import DataLoader
 import pandas as pd
 from tqdm import tqdm 
+import torch
 
 def get_args():
     Parser = argparse.ArgumentParser(description="Machine Translation Evalution")
@@ -84,12 +85,7 @@ def get_args():
         default= True,
         help = 'Use this argument if you want to evaluate the generarted translation.'
     )
-    Parser.add_argument(
-        '--b_size',
-        type=str,
-        default= 32,
-        help = 'the number of example in each batch.'
-    )
+
     Parser.add_argument(
         '--save_path',
         type=str,
@@ -171,17 +167,13 @@ def main(argv):
                         force_ascii=False,
                         orient='records',
                         lines=True)
+        
+            if args.push_to_hub == True:
+                ds = Dataset.from_pandas(df)
+                ds.push_to_hub('khalidalt/ccg_arabic', private=True)
+                translated = []
 
                     
-    df = pd.DataFrame(translated, columns=['caption','ar','url'])
-    df.to_json(f'{args.save_path}/ccg.json',
-                force_ascii=False,
-                orient='records',
-                lines=True)
-
-    if args.push_to_hub == True:
-        ds = Dataset.from_pandas(df)
-        ds.push_to_hub('khalidalt/ccg_arabic', private=True)
 
 
 #if __name__ == '__main__':
@@ -193,11 +185,15 @@ model = AutoModelForSeq2SeqLM.from_pretrained(args.model_name_or_path,cache_dir=
 print("Model Build Successfully")
 print(model)
 
-from torch.nn import DataParallel
+import torch
 
-if args.device == 'cuda':
-    model = DataParallel(model,device_ids=[0,1])
-    model.cuda()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+if args.device == 'cuda' and device =='cuda':
+    
+    model.to(device)
+
+elif args.device == 'cuda':
+    print("Your Device does not show any cuda devices!, CPU will be use instead")
 
 main(args)
