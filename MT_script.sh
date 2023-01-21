@@ -13,5 +13,5 @@ python translate_hf.py  \
     --split "train" \
     --subset 'unlabeled' \
     --column_name "caption" \
-    --device "cpu" \
+    --device "cuda" \
     --save_path $save_path \
