@@ -1,0 +1,4 @@
+datasets==2.7.1
+pandas==1.4.1
+tqdm==4.64.1
+transformers==4.25.1
