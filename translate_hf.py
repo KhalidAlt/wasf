@@ -181,19 +181,10 @@ args = get_args()
 print("Here")
 tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name_or_path,cache_dir=args.cache_dir)
 print("Tokenizer Build Successfully")
-model = AutoModelForSeq2SeqLM.from_pretrained(args.model_name_or_path,cache_dir=args.cache_dir)
+model = AutoModelForSeq2SeqLM.from_pretrained(args.model_name_or_path,cache_dir=args.cache_dir,torch_dtype=torch.float16)
 print("Model Build Successfully")
 print(model)
-
-import torch
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-if args.device == 'cuda' and device =='cuda':
     
-    model.to(device)
-
-elif args.device == 'cuda':
-    print("Your Device does not show any cuda devices!, CPU will be use instead")
+model.to(device)
 
 main(args)
