@@ -25,20 +25,25 @@ def get_args():
        )
     Parser.add_argument(
         '--vocab_size',
-        type=str,
+        type=int,
         default=50_000,
         help ='vocabulary size of the tokenizer'
     )
     Parser.add_argument(
         '--min_freq',
-        type=str,
+        type=int,
         default=2,
         help ='minimum frequence to a word to be saved in the vocab'
     )
     Parser.add_argument(
         "--batch_size",
-        type=str,
+        type=int,
         default=1000,
+        help='batch size'
+    )
+    Parser.add_argument(
+        "--output_path",
+        type=str,
         help='batch size'
     )
     args = Parser.parse_args()
@@ -63,6 +68,7 @@ def main(argv):
     tokenizer.train_from_iterator(batch_iterator(), length=len(ds))
 
     print("Done training")
+    tokenizer.save_model(args.output_path)
 
 
 #if __name__ == '__main__':
