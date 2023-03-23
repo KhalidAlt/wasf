@@ -2,6 +2,7 @@ import argparse, logging
 from datasets import load_dataset
 from tokenizers import ByteLevelBPETokenizer,trainers,pre_tokenizers
 from tokenizers.processors import BertProcessing
+from transformers import AutoConfig
 
 def get_args():
     Parser = argparse.ArgumentParser(description="Machine Translation Evalution")
@@ -26,7 +27,7 @@ def get_args():
     Parser.add_argument(
         '--vocab_size',
         type=int,
-        default=50_000,
+        default=50265,
         help ='vocabulary size of the tokenizer'
     )
     Parser.add_argument(
@@ -44,7 +45,12 @@ def get_args():
     Parser.add_argument(
         "--output_path",
         type=str,
-        help='batch size'
+        help='output path where the tokenizer will be saved'
+    )
+    Parser.add_argument(
+        "--config_name",
+        type=str,
+        help='the name of the model configuration'
     )
     args = Parser.parse_args()
     return args
@@ -60,15 +66,21 @@ def main(argv):
             yield ds['train'][i : i + batch_size]["text"]
 
 
-    trainer = trainers.BpeTrainer(
-            vocab_size=args.vocab_size, min_frequency=args.min_freq,
-            special_tokens=["<s>", "<pad>", "</s>",
-                            "<unk>", "<mask>"])
     print("Start Training ...")
-    tokenizer.train_from_iterator(batch_iterator(), length=len(ds))
+    tokenizer.train_from_iterator(batch_iterator(),
+                        vocab_size=args.vocab_size,
+                        min_frequency=args.min_freq,
+                        length=len(ds),)
 
     print("Done training")
     tokenizer.save_model(args.output_path)
+
+    # Save the configuration of the model (config.json)
+    config_file = AutoConfig.from_pretrained(args.config_name)
+    config_file.save_pretrained(args.output_path)
+
+    # save the tokenizer files
+    print(f"The tokenizer saved in {args.output_path}")
 
 
 #if __name__ == '__main__':
