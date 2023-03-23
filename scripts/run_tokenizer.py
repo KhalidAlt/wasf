@@ -58,12 +58,12 @@ def get_args():
 
 def main(argv):
 
-    ds = load_dataset(args.dataset_name,args.subset, cache_dir=args.cache_dir)
+    ds = load_dataset(args.dataset_name,args.subset,split='train', cache_dir=args.cache_dir)
     tokenizer = ByteLevelBPETokenizer(lowercase=True)
 
     def batch_iterator(batch_size=1000):
         for i in range(0, len(ds), batch_size):
-            yield ds['train'][i : i + batch_size]["text"]
+            yield ds[i : i + batch_size]["text"]
 
 
     print("Start Training ...")
