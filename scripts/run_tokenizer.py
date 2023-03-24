@@ -1,7 +1,6 @@
 import argparse, logging
 from datasets import load_dataset
-from tokenizers import ByteLevelBPETokenizer,trainers,pre_tokenizers
-from tokenizers.processors import BertProcessing
+from tokenizers import ByteLevelBPETokenizer
 from transformers import AutoConfig
 
 def get_args():
@@ -17,6 +16,12 @@ def get_args():
         type=str,
         help = 'the name or path of the subset of the dataset to use in the test',
         required=True
+    )
+    Parser.add_argument(
+        "--split",
+        type=str,
+        default='train',
+        help='the name of the model configuration'
     )
     Parser.add_argument(
         '--cache_dir',
@@ -58,7 +63,7 @@ def get_args():
 
 def main(argv):
 
-    ds = load_dataset(args.dataset_name,args.subset,split='train', cache_dir=args.cache_dir)
+    ds = load_dataset(args.dataset_name,args.subset,split=args.split, cache_dir=args.cache_dir)
     tokenizer = ByteLevelBPETokenizer(lowercase=True)
 
     def batch_iterator(batch_size=1000):
@@ -70,6 +75,8 @@ def main(argv):
     tokenizer.train_from_iterator(batch_iterator(),
                         vocab_size=args.vocab_size,
                         min_frequency=args.min_freq,
+                        special_tokens=["<s>", "<pad>", "</s>",
+                        "<unk>", "<mask>"],
                         length=len(ds),)
 
     print("Done training")
