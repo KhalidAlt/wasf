@@ -1,6 +1,7 @@
 import argparse, logging
 from datasets import load_dataset
-from tokenizers import ByteLevelBPETokenizer
+from tokenizers import ByteLevelBPETokenizer,trainers,pre_tokenizers
+from tokenizers.processors import BertProcessing
 from transformers import AutoConfig
 
 def get_args():
@@ -47,6 +48,13 @@ def get_args():
         default=1000,
         help='batch size'
     )
+
+    Parser.add_argument(
+        "--sampling",
+        type=float,
+        default=1,
+        help='number of example to use in tokenizer training'
+    )
     Parser.add_argument(
         "--output_path",
         type=str,
@@ -65,11 +73,13 @@ def main(argv):
 
     ds = load_dataset(args.dataset_name,args.subset,split=args.split, cache_dir=args.cache_dir)
     tokenizer = ByteLevelBPETokenizer(lowercase=True)
-
+    n = 1
     def batch_iterator(batch_size=1000):
-        for i in range(0, len(ds), batch_size):
+        for i in range(0, int(len(ds)*args.sampling), batch_size):
             yield ds[i : i + batch_size]["text"]
 
+    if args.sampling < 1:
+        ds = ds.shuffle()
 
     print("Start Training ...")
     tokenizer.train_from_iterator(batch_iterator(),
@@ -77,7 +87,7 @@ def main(argv):
                         min_frequency=args.min_freq,
                         special_tokens=["<s>", "<pad>", "</s>",
                         "<unk>", "<mask>"],
-                        length=len(ds),)
+                        length=int(len(ds)*args.sampling),)
 
     print("Done training")
     tokenizer.save_model(args.output_path)
