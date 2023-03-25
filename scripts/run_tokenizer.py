@@ -73,7 +73,7 @@ def main(argv):
 
     ds = load_dataset(args.dataset_name,args.subset,split=args.split, cache_dir=args.cache_dir)
     tokenizer = ByteLevelBPETokenizer(lowercase=True)
-    n = 1
+    
     def batch_iterator(batch_size=1000):
         for i in range(0, int(len(ds)*args.sampling), batch_size):
             yield ds[i : i + batch_size]["text"]
