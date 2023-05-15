@@ -53,7 +53,7 @@ from transformers.utils.versions import require_version
 
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
-#check_min_version("4.27.0.dev0")
+#check_min_version("4.29.0.dev0")
 
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/language-modeling/requirements.txt")
 
@@ -113,6 +113,15 @@ class ModelArguments:
             "help": (
                 "Will use the token generated when running `huggingface-cli login` (necessary to use this script "
                 "with private models)."
+            )
+        },
+    )
+    low_cpu_mem_usage: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "It is an option to create the model as an empty shell, then only materialize its parameters when the pretrained weights are loaded."
+                "set True will benefit LLM loading time and RAM consumption."
             )
         },
     )
@@ -240,6 +249,10 @@ def main():
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
+    if training_args.should_log:
+        # The default of training_args.log_level is passive, so we set log level at info here to have that default.
+        transformers.utils.logging.set_verbosity_info()
+
     log_level = training_args.get_process_log_level()
     logger.setLevel(log_level)
     datasets.utils.logging.set_verbosity(log_level)
@@ -292,6 +305,18 @@ def main():
             streaming=data_args.streaming,
         )
         if "validation" not in raw_datasets.keys():
+            if data_args.max_eval_samples is not None and data_args.max_train_samples is not None:
+                raw_datasets = raw_datasets['train'].train_test_split(train_size = data_args.max_train_samples, test_size = data_args.max_eval_samples)
+            elif data_args.max_eval_samples is not None :
+                raw_datasets = raw_datasets['train'].train_test_split(test_size = data_args.max_eval_samples)
+            else:
+                raw_datasets = raw_datasets['train'].train_test_split(test_size = data_args.validation_split_percentage/100.0)
+            
+            raw_datasets["validation"]  = raw_datasets['test']
+            del raw_datasets['test']
+            print(raw_datasets)
+        """
+        if "validation" not in raw_datasets.keys():
             raw_datasets["validation"] = load_dataset(
                 data_args.dataset_name,
                 data_args.dataset_config_name,
@@ -308,6 +333,8 @@ def main():
                 use_auth_token=True if model_args.use_auth_token else None,
                 streaming=data_args.streaming,
             )
+        """
+
     else:
         data_files = {}
         if data_args.train_file is not None:
@@ -391,6 +418,7 @@ def main():
             cache_dir=model_args.cache_dir,
             revision=model_args.model_revision,
             use_auth_token=True if model_args.use_auth_token else None,
+            low_cpu_mem_usage=model_args.low_cpu_mem_usage,
         )
     else:
         logger.info("Training new model from scratch")
@@ -533,6 +561,7 @@ def main():
             max_train_samples = min(len(train_dataset), data_args.max_train_samples)
             train_dataset = train_dataset.select(range(max_train_samples))
 
+
     if training_args.do_eval:
         if "validation" not in tokenized_datasets:
             raise ValueError("--do_eval requires a validation dataset")
@@ -540,7 +569,6 @@ def main():
         if data_args.max_eval_samples is not None:
             max_eval_samples = min(len(eval_dataset), data_args.max_eval_samples)
             eval_dataset = eval_dataset.select(range(max_eval_samples))
-
         def preprocess_logits_for_metrics(logits, labels):
             if isinstance(logits, tuple):
                 # Depending on the model and config, logits may contain extra tensors,
@@ -569,7 +597,6 @@ def main():
         mlm_probability=data_args.mlm_probability,
         pad_to_multiple_of=8 if pad_to_multiple_of_8 else None,
     )
-
     # Initialize our Trainer
     trainer = Trainer(
         model=model,
@@ -594,7 +621,6 @@ def main():
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
         trainer.save_model()  # Saves the tokenizer too for easy upload
         metrics = train_result.metrics
-
         max_train_samples = (
             data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
         )
@@ -607,10 +633,12 @@ def main():
     # Evaluation
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
-
+        print("###################")
+        print(eval_dataset)
         metrics = trainer.evaluate()
-
+        
         max_eval_samples = data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
+        
         metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
         try:
             perplexity = math.exp(metrics["eval_loss"])
